@@ -6,7 +6,193 @@ import (
 	"regexp"
 )
 
+// PYTHON CONSTRUCTION
+// type ImportStatment struct{
+//   stmt        string
+//   fromPart    string
+//   importPart  string
+//   isRelative  bool
+// }
+// 
+// func ExtractImportsFromTree(root *FileNode) {
+//   println(root.Path)
+//   if root.IsDir {
+//     for _, child := range root.ChildNodes {
+//       ExtractImportsFromTree(child)
+//     }
+//   } else {
+//     ExtractImportsFromFileNode(root)
+//   }
+// }
+// 
+// func ExtractImportsFromFileNode(fileNode *FileNode) {
+//   content := fileNode.Content
+// 
+//   rg := regexp.MustCompile(`(?:from\s+([\w\.]+)\s+)*(?:import\s+([\w, ]+))`)
+//   importStatements := rg.FindAllSubmatch(content, -1)
+//   importStmtList := []ImportStatment{}
+//   for _, matches := range importStatements {
+//     importStmt := ImportStatment{
+//       stmt      : strings.Trim(string(matches[0]), "\n\t "),
+//       fromPart  : string(matches[1]),
+//       importPart: string(matches[2]),
+//     }
+//     importStmt.isRelative = strings.HasPrefix(importStmt.fromPart, ".")
+//     importStmtList = append(importStmtList, importStmt)
+//   }
+// 
+//   for _, imprt := range importStmtList {
+//     println("stmt: ", imprt.stmt)
+//     println("fromPart  : ", imprt.fromPart)
+//     println("importPart: ")
+//     analyzeImport(imprt)
+//     println("isRelative: ", imprt.isRelative)
+//     println("-------------------------------------")
+//   }
+// }
+// 
+// func analyzeImport(imprt ImportStatment) {
+//   importList := strings.Split(imprt.importPart, ",")
+//   for _, imprt := range importList {
+//     imprt = strings.Trim(imprt, " \n")
+//     println("\t" + imprt)
+//     // examples
+//     // ... import module
+//     // ... import module as mdl, module
+// 
+// 
+//     // TODO:
+//     // Search for file with same name as the importPart
+//     // NOTE: to contextualize our searche, we will use the FromPart of the import
+//     // if exist and is a file (.py)
+//     // if exist and is a dir
+//     // if not exist
+//     //    check if it is a pythonObject (aka a variable, function, or class in the file)
+//   }
+// }
 
+
+// Dirs containing py files (and/or __init__.py file)
+type PyPackage struct {
+  name       string
+  fileRef    *FileNode
+  moduleList []*PyModule
+  subPackageList []*PyPackage
+}
+
+
+// python files
+type PyModule struct {
+  name      string
+  fileRef   *FileNode
+  objList   []*PyObject
+}
+
+// Variables, functions, classes ... defined in modules
+type PyObject struct {
+  name      string
+  objType   string
+}
+
+func BuildPackageTree(root *FileNode) *PyPackage{
+  if !root.IsDir {
+    return nil
+  }
+  packageNode := PyPackage{
+    name: root.Name,
+    fileRef: root,
+  }
+  // Search for Modules
+  packageNode.moduleList = ExtractModulesFromPackage(&packageNode)
+  // Search subpackages
+  packageList := []*PyPackage{}
+  for _, child := range root.ChildNodes {
+    if !child.IsDir {
+      continue
+    }
+    packageList = append(packageList, BuildPackageTree(child))
+  }
+  packageNode.subPackageList = packageList
+  return &packageNode
+}
+
+func ExtractModulesFromPackage(pyPackage *PyPackage) []*PyModule{
+  packagePath := pyPackage.fileRef.Path
+  moduleList := []*PyModule{}
+  dirEntry, err := os.ReadDir(packagePath)
+  if err != nil {
+    panic(err)
+  }
+  for _, entry := range dirEntry {
+    if entry.IsDir() {
+      continue
+    }
+    modulePath := packagePath + "/" + entry.Name()
+    moduleContent, err := os.ReadFile(modulePath)
+    if err != nil {
+      panic(err)
+    }
+    moduleFile := &FileNode{
+      Name: entry.Name(),
+      Path: modulePath,
+      IsDir: false,
+      ChildNodes: nil,
+      Content: moduleContent,
+    }
+    pyModule := PyModule{
+      name: entry.Name(),
+      fileRef: moduleFile,
+    }
+    pyModule.objList = ExtractPyObjectFromModule(&pyModule)
+    moduleList = append(moduleList, &pyModule)
+  }
+  return moduleList
+}
+
+func ExtractPyObjectFromModule(pyModule *PyModule) []*PyObject{
+  content := pyModule.fileRef.Content
+  moduleObjects := []*PyObject{}
+
+  rgFunc := regexp.MustCompile(`(?:def\s+)([a-zA-Z_][a-zA-Z0-9_]*)`)
+  rgClass := regexp.MustCompile(`(?:class\s+)([a-zA-Z_][a-zA-Z0-9_]*)`)
+  funcMatches  := rgFunc.FindAllStringSubmatch(string(content), -1)
+  classMatches := rgClass.FindAllStringSubmatch(string(content), -1)
+  for _, matchEntry := range funcMatches {
+    funcName := matchEntry[1]
+    funcObject := PyObject {
+      name: funcName,
+      objType: "FUNCTION",
+    }
+    moduleObjects = append(moduleObjects, &funcObject)
+  }
+  for _, matchEntry := range classMatches {
+    className := matchEntry[1]
+    classObject := PyObject {
+      name: className,
+      objType: "CLASS",
+    }
+    moduleObjects = append(moduleObjects, &classObject)
+  }
+  return moduleObjects
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// FILE TREE CONSTRUCTION ====================================================
 type FileNode struct {
   Name string
   Path string
@@ -14,7 +200,6 @@ type FileNode struct {
   Content []byte
   ChildNodes []*FileNode
 }
-
 
 /* 
 Traverse the directory, listing all its subdirs and files 
@@ -45,7 +230,9 @@ func TraverseDir(dir string, fileFilter func(node *FileNode) bool) *FileNode{
     if entry.IsDir() {
       entryDir := dir + "/" + entry.Name()
       dirNode := TraverseDir(entryDir, fileFilter)
-      root.ChildNodes = append(root.ChildNodes, dirNode)
+      if dirNode != nil {
+        root.ChildNodes = append(root.ChildNodes, dirNode)
+      }
     } else {
       filePath := dir + "/" + entry.Name()
       fileContent, err := os.ReadFile(filePath)
@@ -65,6 +252,9 @@ func TraverseDir(dir string, fileFilter func(node *FileNode) bool) *FileNode{
       }
     }
   }
-
+  // If a dir doesn't have (fitlered) files, return nil rootNode
+  if root.IsDir && len(root.ChildNodes) == 0 {
+    return nil
+  }
   return &root
 }
