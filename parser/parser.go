@@ -196,11 +196,12 @@ type Dependency struct {
 }
 
 // Recursively extract imports for the modules in the package tree.
-func ExtractImportForPackageTree(packageRoot *PyPackage) map[*FileNode][]*Dependency{
-  return extractImportForPackageTree(packageRoot, packageRoot)
+func GenerateFileToImportDepMapForPackageTree(packageRoot *PyPackage) map[*FileNode][]*Dependency{
+  return generateFileToImportDepMapForPackageTree(packageRoot, packageRoot)
 }
 
-func extractImportForPackageTree(currPackage *PyPackage, packageRoot *PyPackage) map[*FileNode][]*Dependency{
+
+func generateFileToImportDepMapForPackageTree(currPackage *PyPackage, packageRoot *PyPackage) map[*FileNode][]*Dependency{
   // mapping: fileWeAnalyze --> []moduleFile
   fileToImportDepMap := make(map[*FileNode][]*Dependency)
   for _, module := range currPackage.moduleList {
@@ -228,7 +229,7 @@ func extractImportForPackageTree(currPackage *PyPackage, packageRoot *PyPackage)
   
   // For subpackages
   for _, subPackage := range currPackage.subPackageList {
-    for k, v := range extractImportForPackageTree(subPackage, packageRoot) {
+    for k, v := range generateFileToImportDepMapForPackageTree(subPackage, packageRoot) {
       fileToImportDepMap[k] = v
     }
   }

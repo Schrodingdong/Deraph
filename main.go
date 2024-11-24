@@ -28,6 +28,6 @@ func main(){
   
   // Extract imports from 
   fmt.Println("IMPORT EXTRACTION ============================")
-  parser.ExtractImportForPackageTree(rootPackage)
+  parser.GenerateFileToImportDepMapForPackageTree(rootPackage)
 }
 
