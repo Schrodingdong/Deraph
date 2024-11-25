@@ -191,8 +191,8 @@ type ImportStatment struct{
 }
 
 type Dependency struct {
-  module *PyModule
-  isExternal bool
+  Module *PyModule
+  IsExternal bool
 }
 
 // Recursively extract imports for the modules in the package tree.
@@ -217,8 +217,8 @@ func generateFileToImportDepMapForPackageTree(currPackage *PyPackage, packageRoo
         moduleName = strings.Split(moduleName, " ")[0]
         moduleRef, isExt := checkImportNameIsModuleInPackageTree(moduleName, packageRoot) 
         moduleDep := Dependency{
-          module: moduleRef,
-          isExternal: isExt,
+          Module: moduleRef,
+          IsExternal: isExt,
         }
         moduleDepList = append(moduleDepList, &moduleDep)
       }

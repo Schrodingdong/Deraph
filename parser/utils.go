@@ -13,7 +13,7 @@ func PrintFileToImportDepMap(m map[*FileNode][]*Dependency) {
     }
     fmt.Println(k.Name, ":")
     for _, dep := range v {
-      fmt.Printf("\t%30q: IS_EXT=%v\n", dep.module.Name, dep.isExternal)
+      fmt.Printf("\t%30q: IS_EXT=%v\n", dep.Module.Name, dep.IsExternal)
     }
   }
 }
