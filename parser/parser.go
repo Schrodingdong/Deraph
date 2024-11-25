@@ -205,7 +205,6 @@ func generateFileToImportDepMapForPackageTree(currPackage *PyPackage, packageRoo
   // mapping: fileWeAnalyze --> []moduleFile
   fileToImportDepMap := make(map[*FileNode][]*Dependency)
   for _, module := range currPackage.ModuleList {
-    fmt.Println(module.FileRef.Name)
     importList := extractImportsFromModule(module)
     moduleDepList := []*Dependency{}
     for _, imprtStmt := range importList {
@@ -225,7 +224,6 @@ func generateFileToImportDepMapForPackageTree(currPackage *PyPackage, packageRoo
     }
     fileToImportDepMap[module.FileRef] = moduleDepList
   }
-  PrintFileToImportDepMap(fileToImportDepMap)
   
   // For subpackages
   for _, subPackage := range currPackage.SubPackageList {
@@ -258,7 +256,6 @@ func checkImportNameIsModuleInPackage(importName string, pyPackage *PyPackage) (
     // Check module Objects
     for _, pyObj := range module.ObjList {
       if importName == pyObj.Name {
-        println("importName: ", importName)
         return module, false
       }
     }

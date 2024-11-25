@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/schrodi/deraph/grapher"
 	"github.com/schrodi/deraph/parser"
@@ -12,8 +13,10 @@ import (
 var hasExtDep bool
 var projectPath string 
 var outputFilename string 
+var verbose bool 
 func init() {
   flag.BoolVar(&hasExtDep, "ext", false, "Add external dependencies to the output")
+  flag.BoolVar(&verbose, "v", false, "Verbose output")
   flag.StringVar(&projectPath, "path", "", "Python project to analyze")
   flag.StringVar(&outputFilename, "out", "graphviz.gv", "output filename")
   flag.Parse()
@@ -40,9 +43,25 @@ func main(){
   )
 
   rootPackage := parser.BuildPackageTree(root)
+  if verbose {
+    fmt.Println("PACKAGE TREE =====================================")
+    parser.PrintPackageTree(rootPackage)
+    fmt.Println()
+  }
+
   FileToImportDepMap := parser.GenerateFileToImportDepMapForPackageTree(rootPackage)
+  if verbose {
+    fmt.Println("FILE TO IMPORT DEPENDENCY MAP ====================")
+    parser.PrintFileToImportDepMap(FileToImportDepMap)
+    fmt.Println()
+  }
+  
+  fmt.Printf("Generating graphviz content to %q\n\n", outputFilename)
   graphvizContent := grapher.GenerateGraphvizFromFileToImportDepMap(rootPackage, FileToImportDepMap, hasExtDep)
   grapher.GenerateGraphvizFile(outputFilename, graphvizContent)
+  absPath, err := filepath.Abs(outputFilename)
+  if err != nil { panic(err) }
+  fmt.Printf("Generation successful! Graphviz content available in: \n%v\n", absPath)
 }
 
 func printUsage() {
