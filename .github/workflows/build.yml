@@ -35,6 +35,12 @@ jobs:
           name: deraph-linux-arm64
           path: bin/deraph-linux-arm64
 
+      - name: Upload Linux AMD64 binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: deraph-linux-amd64
+          path: bin/deraph-linux-amd64
+
       - name: Upload Windows ARM binary
         uses: actions/upload-artifact@v3
         with:
