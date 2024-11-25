@@ -1,4 +1,5 @@
 *.gv
 *.png
 !images/*
+bin/
 oldREADME.md
