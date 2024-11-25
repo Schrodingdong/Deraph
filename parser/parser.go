@@ -74,24 +74,24 @@ import (
 
 // Dirs containing py files (and/or __init__.py file)
 type PyPackage struct {
-  name       string
-  fileRef    *FileNode
-  moduleList []*PyModule
-  subPackageList []*PyPackage
+  Name       string
+  FileRef    *FileNode
+  ModuleList []*PyModule
+  SubPackageList []*PyPackage
 }
 
 
 // python files
 type PyModule struct {
-  name      string
-  fileRef   *FileNode
-  objList   []*PyObject
+  Name      string
+  FileRef   *FileNode
+  ObjList   []*PyObject
 }
 
 // Variables, functions, classes ... defined in modules
 type PyObject struct {
-  name      string
-  objType   string
+  Name      string
+  ObjType   string
 }
 
 func BuildPackageTree(root *FileNode) *PyPackage{
@@ -99,11 +99,11 @@ func BuildPackageTree(root *FileNode) *PyPackage{
     return nil
   }
   packageNode := PyPackage{
-    name: root.Name,
-    fileRef: root,
+    Name: root.Name,
+    FileRef: root,
   }
   // Search for Modules
-  packageNode.moduleList = extractModulesFromPackage(&packageNode)
+  packageNode.ModuleList = extractModulesFromPackage(&packageNode)
   // Search subpackages
   packageList := []*PyPackage{}
   for _, child := range root.ChildNodes {
@@ -112,12 +112,12 @@ func BuildPackageTree(root *FileNode) *PyPackage{
     }
     packageList = append(packageList, BuildPackageTree(child))
   }
-  packageNode.subPackageList = packageList
+  packageNode.SubPackageList = packageList
   return &packageNode
 }
 
 func extractModulesFromPackage(pyPackage *PyPackage) []*PyModule{
-  packagePath := pyPackage.fileRef.Path
+  packagePath := pyPackage.FileRef.Path
   moduleList := []*PyModule{}
   dirEntry, err := os.ReadDir(packagePath)
   if err != nil {
@@ -140,17 +140,17 @@ func extractModulesFromPackage(pyPackage *PyPackage) []*PyModule{
       Content: moduleContent,
     }
     pyModule := PyModule{
-      name: entry.Name(),
-      fileRef: moduleFile,
+      Name: entry.Name(),
+      FileRef: moduleFile,
     }
-    pyModule.objList = extractPyObjectFromModule(&pyModule)
+    pyModule.ObjList = extractPyObjectFromModule(&pyModule)
     moduleList = append(moduleList, &pyModule)
   }
   return moduleList
 }
 
 func extractPyObjectFromModule(pyModule *PyModule) []*PyObject{
-  content := pyModule.fileRef.Content
+  content := pyModule.FileRef.Content
   moduleObjects := []*PyObject{}
 
   rgFunc := regexp.MustCompile(`(?:def\s+)([a-zA-Z_][a-zA-Z0-9_]*)`)
@@ -160,16 +160,16 @@ func extractPyObjectFromModule(pyModule *PyModule) []*PyObject{
   for _, matchEntry := range funcMatches {
     funcName := matchEntry[1]
     funcObject := PyObject {
-      name: funcName,
-      objType: "FUNCTION",
+      Name: funcName,
+      ObjType: "FUNCTION",
     }
     moduleObjects = append(moduleObjects, &funcObject)
   }
   for _, matchEntry := range classMatches {
     className := matchEntry[1]
     classObject := PyObject {
-      name: className,
-      objType: "CLASS",
+      Name: className,
+      ObjType: "CLASS",
     }
     moduleObjects = append(moduleObjects, &classObject)
   }
@@ -204,8 +204,8 @@ func GenerateFileToImportDepMapForPackageTree(packageRoot *PyPackage) map[*FileN
 func generateFileToImportDepMapForPackageTree(currPackage *PyPackage, packageRoot *PyPackage) map[*FileNode][]*Dependency{
   // mapping: fileWeAnalyze --> []moduleFile
   fileToImportDepMap := make(map[*FileNode][]*Dependency)
-  for _, module := range currPackage.moduleList {
-    fmt.Println(module.fileRef.Name)
+  for _, module := range currPackage.ModuleList {
+    fmt.Println(module.FileRef.Name)
     importList := extractImportsFromModule(module)
     moduleDepList := []*Dependency{}
     for _, imprtStmt := range importList {
@@ -223,12 +223,12 @@ func generateFileToImportDepMapForPackageTree(currPackage *PyPackage, packageRoo
         moduleDepList = append(moduleDepList, &moduleDep)
       }
     }
-    fileToImportDepMap[module.fileRef] = moduleDepList
+    fileToImportDepMap[module.FileRef] = moduleDepList
   }
   PrintFileToImportDepMap(fileToImportDepMap)
   
   // For subpackages
-  for _, subPackage := range currPackage.subPackageList {
+  for _, subPackage := range currPackage.SubPackageList {
     for k, v := range generateFileToImportDepMapForPackageTree(subPackage, packageRoot) {
       fileToImportDepMap[k] = v
     }
@@ -239,7 +239,7 @@ func generateFileToImportDepMapForPackageTree(currPackage *PyPackage, packageRoo
 func checkImportNameIsModuleInPackageTree(importName string, pyPackage *PyPackage) (*PyModule, bool) {
   moduleRef, isExt := checkImportNameIsModuleInPackage(importName, pyPackage)
   if isExt {
-    for _, subpackage := range pyPackage.subPackageList {
+    for _, subpackage := range pyPackage.SubPackageList {
       moduleRef, isExt := checkImportNameIsModuleInPackageTree(importName, subpackage)
       if !isExt {
         return moduleRef, isExt
@@ -250,29 +250,29 @@ func checkImportNameIsModuleInPackageTree(importName string, pyPackage *PyPackag
 }
 
 func checkImportNameIsModuleInPackage(importName string, pyPackage *PyPackage) (*PyModule, bool) {
-  for _, module := range pyPackage.moduleList {
+  for _, module := range pyPackage.ModuleList {
     // check modules
-    if importName+".py" == module.name {
+    if importName+".py" == module.Name {
       return module, false
     }
     // Check module Objects
-    for _, pyObj := range module.objList {
-      if importName == pyObj.name {
+    for _, pyObj := range module.ObjList {
+      if importName == pyObj.Name {
         println("importName: ", importName)
         return module, false
       }
     }
   }
   extModule := PyModule{
-    name: "EXT-" + importName,
-    fileRef: nil,
-    objList: nil,
+    Name: "EXT-" + importName,
+    FileRef: nil,
+    ObjList: nil,
   }
   return &extModule, true
 }
 
 func extractImportsFromModule(module *PyModule) []*ImportStatment{
-  content := module.fileRef.Content
+  content := module.FileRef.Content
   rg := regexp.MustCompile(`(?:from\s+([\w\.]+)\s+)*(?:import\s+([\w, ]+))`)
   importStatements := rg.FindAllSubmatch(content, -1)
   importStmtList := []*ImportStatment{}

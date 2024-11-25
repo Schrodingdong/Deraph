@@ -13,7 +13,7 @@ func PrintFileToImportDepMap(m map[*FileNode][]*Dependency) {
     }
     fmt.Println(k.Name, ":")
     for _, dep := range v {
-      fmt.Printf("\t%30q: IS_EXT=%v\n", dep.module.name, dep.isExternal)
+      fmt.Printf("\t%30q: IS_EXT=%v\n", dep.module.Name, dep.isExternal)
     }
   }
 }
@@ -25,14 +25,14 @@ func PrintPackageTree(node *PyPackage) {
 
 func printPackageTreeWithDepth(node *PyPackage, depth int8) {
   prefix := strings.Repeat("  ", int(depth))
-  fmt.Println(prefix + "[PACKAGE] ", node.name)
-  for _, module := range node.moduleList {
-    fmt.Println(prefix + "  " + "[MODULE] ", module.name, ":")
-    for _, obj := range module.objList {
-      fmt.Println(prefix + "    " + "> " + obj.objType + " ", obj.name)
+  fmt.Println(prefix + "[PACKAGE] ", node.Name)
+  for _, module := range node.ModuleList {
+    fmt.Println(prefix + "  " + "[MODULE] ", module.Name, ":")
+    for _, obj := range module.ObjList {
+      fmt.Println(prefix + "    " + "> " + obj.ObjType + " ", obj.Name)
     }
   }
-  for _,subpackage := range node.subPackageList {
+  for _,subpackage := range node.SubPackageList {
     printPackageTreeWithDepth(subpackage, depth + 1)
   }
 }
