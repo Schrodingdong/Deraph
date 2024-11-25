@@ -24,8 +24,10 @@ deraph --ext -v --path ./example/python_project # verbose output
 deraph --ext -v --path ./example/python_project --out superdupercoolgraph.gv
 ```
 
-Here is the image output with external dependencies
-![Project dependency graph with external dependencies shown](images/ext_dep_pyproject_graph.png "Project dependency graph with external dependencies shown")
+- Here is the image output
 
-And here without external dependencies
 ![Project dependency graph](images/pyproject_graph.png "Project dependency graph")
+
+- And here with external dependencies shown
+
+![Project dependency graph with external dependencies shown](images/ext_dep_pyproject_graph.png "Project dependency graph with external dependencies shown")
