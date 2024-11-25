@@ -66,7 +66,7 @@ func main(){
 
 func printUsage() {
     fmt.Println("usage: ")
-    fmt.Println("deraph [-ext] --path </path/to/project> --out <outFileName>")
+    fmt.Println("deraph [-ext] [-v] --path </path/to/project> [--out <outFileName>]")
     fmt.Println()
     fmt.Println("FLAGS:")
     flag.PrintDefaults()
