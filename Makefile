@@ -1,10 +1,11 @@
+PLATFORMS := linux/arm linux/arm64 linux/amd64 windows/arm windows/arm64 windows/amd64 darwin/arm64 darwin/amd64
+BIN_DIR := bin
+SRC_DIR := src
+
 compile:
-	echo "Compiling for every OS and Platform"
+	echo "========= Compiling for every OS and Platform ========="
 	mkdir -p bin
-	GOOS=linux 	 GOARCH=arm   go build -C ./src -o ../bin/deraph-linux-arm  			 main.go
-	GOOS=linux   GOARCH=arm64 go build -C ./src -o ../bin/deraph-linux-arm64  		 main.go
-	GOOS=windows GOARCH=arm   go build -C ./src -o ../bin/deraph-windows-arm.exe   main.go
-	GOOS=windows GOARCH=arm64 go build -C ./src -o ../bin/deraph-windows-arm64.exe main.go
-	GOOS=windows GOARCH=amd64 go build -C ./src -o ../bin/deraph-windows-amd64.exe main.go
-	GOOS=darwin  GOARCH=arm64 go build -C ./src -o ../bin/deraph-darwin-arm64  		 main.go
-	GOOS=darwin  GOARCH=amd64 go build -C ./src -o ../bin/deraph-darwin-amd64  		 main.go
+	$(foreach platform,	$(PLATFORMS), \
+		$(eval GOOS=$(word 1,$(subst /, ,$(platform)))) \
+		$(eval GOARCH=$(word 2,$(subst /, ,$(platform)))) \
+		go build -C ./$(SRC_DIR) -o ../$(BIN_DIR)/deraph-$(GOOS)-$(GOARCH)$(if $(findstring windows,$(GOOS)),.exe) main.go;)
