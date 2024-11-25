@@ -12,13 +12,15 @@ import (
 
 var hasExtDep bool
 var projectPath string 
-var outputFilename string 
+var outputPath string 
 var verbose bool 
 func init() {
+  cwd, _ := os.Getwd()
+  defaultOuputPath := filepath.Join(cwd, "graphviz.gv")
   flag.BoolVar(&hasExtDep, "ext", false, "Add external dependencies to the output")
   flag.BoolVar(&verbose, "v", false, "Verbose output")
   flag.StringVar(&projectPath, "path", "", "Python project to analyze")
-  flag.StringVar(&outputFilename, "out", "graphviz.gv", "output filename")
+  flag.StringVar(&outputPath, "out", defaultOuputPath, "output path")
   flag.Parse()
 }
 
@@ -56,10 +58,10 @@ func main(){
     fmt.Println()
   }
   
-  fmt.Printf("Generating graphviz content to %q\n\n", outputFilename)
+  fmt.Printf("Generating graphviz content to %q\n\n", outputPath)
   graphvizContent := grapher.GenerateGraphvizFromFileToImportDepMap(rootPackage, FileToImportDepMap, hasExtDep)
-  grapher.GenerateGraphvizFile(outputFilename, graphvizContent)
-  absPath, err := filepath.Abs(outputFilename)
+  grapher.GenerateGraphvizFile(outputPath, graphvizContent)
+  absPath, err := filepath.Abs(outputPath)
   if err != nil { panic(err) }
   fmt.Printf("Generation successful! Graphviz content available in: \n%v\n", absPath)
 }
