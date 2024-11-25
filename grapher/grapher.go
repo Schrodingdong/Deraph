@@ -88,25 +88,27 @@ func generateGraphNodes(graph *graphviz.Graph, pckg *parser.PyPackage) *graphviz
 
 func addDependencyEdges(graph *graphviz.Graph, externalDependencies *graphviz.Graph, ftiMap map[*parser.FileNode][]*parser.Dependency, hasExtDep bool) *graphviz.Graph{
   for k, v := range ftiMap {
-    println(k.Path)
     fromNode, err := graph.NodeByName(k.Name)
     if err != nil { panic(err) }
     for _, dep := range v {
       depName := dep.Module.Name
       var depNode *cgraph.Node
-      if hasExtDep && strings.Contains(depName, "EXT") { 
-        // Add it to ext dep graph
-        depNode, err = externalDependencies.CreateNodeByName(depName)
-        if err != nil { panic(err) }
+      if strings.Contains(depName, "EXT") { 
+        if hasExtDep {
+          depNode, err = externalDependencies.CreateNodeByName(depName)
+          if err != nil { panic(err) }
+        }
       } else {
         depNode, err = graph.NodeByName(depName)
         if err != nil { panic(err) }
       }
-      depEdgeName := k.Name+"->"+depName
-      e, err := graph.CreateEdgeByName(depEdgeName, fromNode, depNode)
-      if err != nil { panic(err) }
-      e.SetStyle(cgraph.EdgeStyle(DEP_EDGE_STYLE))
-      e.SetColor(DEP_EDGE_COLOR)
+      if depNode != nil {
+        depEdgeName := k.Name+"->"+depName
+        e, err := graph.CreateEdgeByName(depEdgeName, fromNode, depNode)
+        if err != nil { panic(err) }
+        e.SetStyle(cgraph.EdgeStyle(DEP_EDGE_STYLE))
+        e.SetColor(DEP_EDGE_COLOR)
+      }
     }
   }
   return graph
