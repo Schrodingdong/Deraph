@@ -19,7 +19,7 @@ var PACKAGE_COLOR string = "#a8dadc"
 var PACKAGE_SHAPE string = "tab"
 var PACKAGE_STYLE string = "filled"
 var MODULE_STYLE string = "rounded"
-var MODULE_SHAPE string = "squre"
+var MODULE_SHAPE string = "rect"
 
 // Edge Styling
 var EDGE_LEN float64 = 3
@@ -31,9 +31,18 @@ func initializeGraph() (context.Context, *graphviz.Graphviz, *graphviz.Graph, er
   g, err := graphviz.New(ctx)
   if err != nil { return nil, nil, nil, err }
   graph, err := g.Graph()
-  graph.SetLayout(GRAPH_LAYOUT)
+  graph.SetLayout("dot")
   if err != nil { return nil, nil, nil, err }
   return ctx, g, graph, nil
+}
+
+// Initialize a cluster for external dependencies to link to
+func initializeExtDepGraph(graph *graphviz.Graph) (*graphviz.Graph, error) {
+  extDep, err := graph.CreateSubGraphByName("cluster_ext_dep")
+  if err != nil { return nil, err }
+  extDep.SetBackgroundColor("#eaeaea")
+  extDep.SetClusterRank("TB")
+  return extDep, nil
 }
 
 func GenerateGraphvizFile(graphvizFilePath string, content []byte) {
@@ -77,18 +86,22 @@ func generateGraphNodes(graph *graphviz.Graph, pckg *parser.PyPackage) *graphviz
   return graph
 }
 
-func addDependencyEdges(graph *graphviz.Graph, ftiMap map[*parser.FileNode][]*parser.Dependency) *graphviz.Graph{
+func addDependencyEdges(graph *graphviz.Graph, externalDependencies *graphviz.Graph, ftiMap map[*parser.FileNode][]*parser.Dependency, hasExtDep bool) *graphviz.Graph{
   for k, v := range ftiMap {
     println(k.Path)
     fromNode, err := graph.NodeByName(k.Name)
     if err != nil { panic(err) }
     for _, dep := range v {
       depName := dep.Module.Name
-      if strings.Contains(depName, "EXT") { 
-        continue
+      var depNode *cgraph.Node
+      if hasExtDep && strings.Contains(depName, "EXT") { 
+        // Add it to ext dep graph
+        depNode, err = externalDependencies.CreateNodeByName(depName)
+        if err != nil { panic(err) }
+      } else {
+        depNode, err = graph.NodeByName(depName)
+        if err != nil { panic(err) }
       }
-      depNode, err := graph.NodeByName(depName)
-      if err != nil { panic(err) }
       depEdgeName := k.Name+"->"+depName
       e, err := graph.CreateEdgeByName(depEdgeName, fromNode, depNode)
       if err != nil { panic(err) }
@@ -99,9 +112,10 @@ func addDependencyEdges(graph *graphviz.Graph, ftiMap map[*parser.FileNode][]*pa
   return graph
 }
 
-
-func GenerateGraphvizFromFileToImportDepMap(rootPackage *parser.PyPackage, ftiMap map[*parser.FileNode][]*parser.Dependency) []byte {
+func GenerateGraphvizFromFileToImportDepMap(rootPackage *parser.PyPackage, ftiMap map[*parser.FileNode][]*parser.Dependency, hasExtDep bool) []byte {
   ctx, g, graph, err := initializeGraph()
+  if err != nil { panic(err) }
+  extDep, err := initializeExtDepGraph(graph)
   if err != nil { panic(err) }
   defer func() {
     if err := graph.Close(); err != nil { panic(err) }
@@ -110,7 +124,7 @@ func GenerateGraphvizFromFileToImportDepMap(rootPackage *parser.PyPackage, ftiMa
 
   // Traverse the package tree
   graph = generateGraphNodes(graph, rootPackage)
-  graph = addDependencyEdges(graph, ftiMap)
+  graph = addDependencyEdges(graph, extDep, ftiMap, hasExtDep)
 
   // Render to buffer
   var buf bytes.Buffer

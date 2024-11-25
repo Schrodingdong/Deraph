@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,20 +9,28 @@ import (
 	"github.com/schrodi/deraph/parser"
 )
 
+var hasExtDep bool
+var projectPath string 
+var outputFilename string 
+func init() {
+  flag.BoolVar(&hasExtDep, "ext", false, "Add external dependencies to the output")
+  flag.StringVar(&projectPath, "path", "", "Python project to analyze")
+  flag.StringVar(&outputFilename, "out", "graphviz.gv", "output filename")
+  flag.Parse()
+}
+
 func main(){
-  args := os.Args
-  if len(args) == 1 {
-    fmt.Println("DERAPH - Python dependency grapher")
-    fmt.Println("usage: ")
-    fmt.Println("\tderaph <path/to/python/project>")
-  } else if len(args) > 2 {
-    fmt.Println("Wrong number of args")
-    fmt.Println("usage: ")
-    fmt.Println("\tderaph <path/to/python/project>")
+  if len(os.Args) == 1 {
+    printBanner()
+    printUsage()
+    os.Exit(0)
   }
-  // projectPath := "../Zeta-functions/src/docker_proxy"
-  projectPath := args[1]
-  
+  if !doesPathExist(projectPath) {
+    fmt.Printf("Project path %q doesn't exist or is invalid\n", projectPath)
+    printUsage()
+    os.Exit(1)
+  }
+
   // Construct the project dir
   root := parser.TraverseDir(
     projectPath,
@@ -29,22 +38,36 @@ func main(){
       return parser.GetFileExtension(node) == "py"
     },
   )
-  fmt.Println("FILE TREE ============================")
-  parser.PrintFileTree(root)
-  fmt.Println()
-  
-  // Construct the proje-ct package/module tree
-  rootPackage := parser.BuildPackageTree(root)
-  fmt.Println("PACKAGE TREE ============================")
-  parser.PrintPackageTree(rootPackage)
-  fmt.Println()
-  
-  // Extract imports from 
-  fmt.Println("IMPORT EXTRACTION ============================")
-  FileToImportDepMap := parser.GenerateFileToImportDepMapForPackageTree(rootPackage)
 
-  // Generate the graphviz file
-  graphvizContent := grapher.GenerateGraphvizFromFileToImportDepMap(rootPackage, FileToImportDepMap)
-  grapher.GenerateGraphvizFile("testuuu.gv", graphvizContent)
+  rootPackage := parser.BuildPackageTree(root)
+  FileToImportDepMap := parser.GenerateFileToImportDepMapForPackageTree(rootPackage)
+  graphvizContent := grapher.GenerateGraphvizFromFileToImportDepMap(rootPackage, FileToImportDepMap, hasExtDep)
+  grapher.GenerateGraphvizFile(outputFilename, graphvizContent)
+}
+
+func printUsage() {
+    fmt.Println("usage: ")
+    fmt.Println("deraph [-ext] --path </path/to/project> --out <outFileName>")
+    fmt.Println()
+    fmt.Println("FLAGS:")
+    flag.PrintDefaults()
+}
+
+func printBanner() {
+    fmt.Print(`
+   ___                    __ __
+  / _ \___ _______ ____  / // /
+ / // / -_) __/ _ \/ _ \/ _  / 
+/____/\__/_/  \_,_/ .__/_//_/  
+                 /_/           
+Simple CLI to generate graphviz graphs of your python project's dependencies.
+
+`)
+}
+
+func doesPathExist(path string) bool{
+  info, err := os.Stat(path)
+  if err != nil { return false }
+  return info.IsDir()
 }
 
