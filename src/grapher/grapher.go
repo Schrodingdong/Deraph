@@ -45,12 +45,15 @@ func initializeExtDepGraph(graph *graphviz.Graph) (*graphviz.Graph, error) {
   return extDep, nil
 }
 
-func GenerateGraphvizFile(graphvizFilePath string, content []byte) {
+func GenerateGraphvizFile(graphvizFilePath string, content []byte) (*os.File, error){
   // Generate the graphviz file
   file, err := os.Create(graphvizFilePath)
-  if err != nil { panic(err) }
+  if err != nil { 
+    return nil, err 
+  }
   file.Write(content)
   file.Close()
+  return file, nil
 }
 
 func generateGraphNodes(graph *graphviz.Graph, pckg *parser.PyPackage) *graphviz.Graph{

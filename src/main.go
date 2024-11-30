@@ -4,23 +4,26 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 
 	"github.com/schrodi/deraph/grapher"
 	"github.com/schrodi/deraph/parser"
 )
 
-var hasExtDep bool
-var projectPath string 
-var outputPath string 
 var verbose bool 
+var hasExtDep bool
+var toGraphviz bool
+var projectPath string 
+var outputDir string 
 func init() {
-  cwd, _ := os.Getwd()
-  defaultOuputPath := filepath.Join(cwd, "graphviz.gv")
+  defaultOuputDir, _ := os.Getwd()
   flag.BoolVar(&hasExtDep, "ext", false, "Add external dependencies to the output")
   flag.BoolVar(&verbose, "v", false, "Verbose output")
+  flag.BoolVar(&toGraphviz, "toGraphviz", false, "Generates the graphviz file only")
   flag.StringVar(&projectPath, "path", "", "Python project to analyze")
-  flag.StringVar(&outputPath, "out", defaultOuputPath, "output path")
+  flag.StringVar(&outputDir, "outDir", defaultOuputDir, "output dir")
   flag.Parse()
 }
 
@@ -57,13 +60,39 @@ func main(){
     parser.PrintFileToImportDepMap(FileToImportDepMap)
     fmt.Println()
   }
-  
-  fmt.Printf("Generating graphviz content to %q\n\n", outputPath)
+
+  // Generate the graphviz content
   graphvizContent := grapher.GenerateGraphvizFromFileToImportDepMap(rootPackage, FileToImportDepMap, hasExtDep)
-  grapher.GenerateGraphvizFile(outputPath, graphvizContent)
-  absPath, err := filepath.Abs(outputPath)
+  // Save it
+  var graphvizFileName = "graphviz.gv"
+  var graphvizOutputPath string
+  if toGraphviz {
+    graphvizOutputPath = path.Join(outputDir, graphvizFileName)
+  } else {
+    graphvizOutputPath = path.Join("/tmp", graphvizFileName)
+  }
+  _, err := grapher.GenerateGraphvizFile(graphvizOutputPath, graphvizContent)
   if err != nil { panic(err) }
-  fmt.Printf("Generation successful! Graphviz content available in: \n%v\n", absPath)
+  absPath, err := filepath.Abs(graphvizOutputPath)
+  defer func() { 
+    // delete temp file if not toGraphviz output
+    if !toGraphviz {
+      os.Remove(absPath)
+    }
+  }()
+  if err != nil { panic(err) }
+  if toGraphviz {
+    fmt.Printf("Generation successful! Graphviz content available in: \n%v\n", absPath)
+    return
+  }
+
+  // Generate the image
+  imageFileName := "project_dep_graph.png"
+  imageOutputPath := path.Join(outputDir, imageFileName)
+  cmd := exec.Command("dot", "-Tpng", absPath, "-o", imageOutputPath)
+  if err := cmd.Run(); err != nil { panic(err) }
+  fmt.Printf("Generation successful! Image available in: \n%v\n", imageOutputPath)
+  return
 }
 
 func printUsage() {
